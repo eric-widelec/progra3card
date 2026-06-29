@@ -10,6 +10,6 @@
 ---
 
 ## Síntesis del Proyecto
-El proyecto consiste en un sistema de gestión y consulta para la tarjeta de crédito **Progra3card** que integra dos plataformas independientes compartiendo una misma base de datos relacional (`mi_banco_db` en MySQL).
+El proyecto consiste en un sistema de gestión y consulta para la tarjeta de crédito **Progra3card** que integra dos plataformas independientes compartiendo una misma base de datos relacional.
 
 ---
