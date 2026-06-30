@@ -498,35 +498,103 @@ namespace Progra3Card.Administrativo
         static void MenuEliminarTarjeta()
         {
             Console.Clear();
-            Console.WriteLine("--- ELIMINAR TARJETA DEL SISTEMA ---");
-            Console.Write("Ingrese el Número de Cuenta de la tarjeta a dar de baja: ");
-            int numCuenta = Convert.ToInt32(Console.ReadLine());
+            Console.WriteLine("==================================================");
+            Console.WriteLine("       ELIMINAR TARJETA Y CLIENTE (BAJA)          ");
+            Console.WriteLine("==================================================");
 
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("\n⚠️ ADVERTENCIA: Se eliminará la tarjeta, sus liquidaciones y los datos de acceso web vinculados.");
-            Console.ResetColor();
-            Console.Write("¿Está seguro de continuar? (S/N): ");
-
-            if (Console.ReadLine().ToUpper() == "S")
+            // 1. Validación de ingreso numérico para la cuenta
+            int numCuenta = 0;
+            while (true)
             {
-                // === A realizar ===
-                // Aquí deben ejecutar un DELETE sobre la tabla 'tarjetas' donde num_cuenta = numCuenta.
-                // Como definimos ON DELETE CASCADE en la base de datos, las liquidaciones se borrarán solas.
-                // Opcional: Evaluar si también eliminan al usuario de la tabla 'usuarios' o si lo mantienen.
+                Console.Write("\nIngrese el Número de Cuenta de la tarjeta a dar de baja: ");
+                if (int.TryParse(Console.ReadLine().Trim(), out numCuenta) && numCuenta > 0)
+                {
+                    break;
+                }
 
-                bool exito = DarDeBajaTarjeta(numCuenta);
-
-                if (exito)
-                    Console.WriteLine("\nTarjeta eliminada correctamente del sistema.");
-                else
-                    Console.WriteLine("\nError al intentar eliminar la tarjeta. Verifique el número de cuenta.");
-            }
-            else
-            {
-                Console.WriteLine("\nOperación cancelada.");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️ Error: Ingrese un número de cuenta válido (mayor a 0).");
+                Console.ResetColor();
             }
 
-            Console.WriteLine("\nPresione una tecla para volver al menú...");
+            using (MySqlConnection conexion = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    conexion.Open();
+
+                    // Validacion de existencia de número de cuenta y obtener el DNI del titular
+                    string dniTitular = "";
+                    string queryCheck = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @numCuenta";
+
+                    using (MySqlCommand cmdCheck = new MySqlCommand(queryCheck, conexion))
+                    {
+                        cmdCheck.Parameters.AddWithValue("@numCuenta", numCuenta);
+                        object result = cmdCheck.ExecuteScalar();
+
+                        // Si result es null, significa que no existe ninguna fila con ese número de cuenta
+                        if (result == null)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"\n❌ Operación cancelada: No se encontró ninguna tarjeta registrada bajo la cuenta {numCuenta}.");
+                            Console.ResetColor();
+                            Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
+                            Console.ReadKey();
+                            return; // Aborta la operación y vuelve al menú
+                        }
+
+                        dniTitular = result.ToString();
+                    }
+
+                    // Confirmación de seguridad
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"\n⚠️ ADVERTENCIA: Se eliminará la cuenta {numCuenta}, sus liquidaciones y TODOS los datos del cliente (DNI {dniTitular}).");
+                    Console.ResetColor();
+                    Console.Write("¿Está seguro de continuar? (S/N): ");
+
+                    if (Console.ReadLine().Trim().ToUpper() == "S")
+                    {
+                        // Ejecucion de baja (Tarjeta y Usuario)
+                        string queryDelete = @"
+                    DELETE FROM tarjetas WHERE num_cuenta = @numCuenta;
+                    DELETE FROM usuarios WHERE documento = @dniTitular;";
+
+                        using (MySqlCommand cmdDelete = new MySqlCommand(queryDelete, conexion))
+                        {
+                            cmdDelete.Parameters.AddWithValue("@numCuenta", numCuenta);
+                            cmdDelete.Parameters.AddWithValue("@dniTitular", dniTitular);
+
+                            int filasAfectadas = cmdDelete.ExecuteNonQuery();
+
+                            if (filasAfectadas > 0)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine($"\n✅ ¡Baja exitosa! La tarjeta y el cliente (DNI {dniTitular}) han sido eliminados del sistema.");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine("\n⚠️ No se afectó ningún registro. Verifique el estado de la base de datos.");
+                                Console.ResetColor();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("\nOperación cancelada por el usuario.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n❌ Ocurrió un error inesperado de base de datos:");
+                    Console.WriteLine(ex.Message);
+                    Console.ResetColor();
+                }
+            }
+
+            Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
             Console.ReadKey();
         }
 
