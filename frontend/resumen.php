@@ -16,7 +16,7 @@ if (!isset($_SESSION['usuario']) || empty($_SESSION['usuario'])) {
     exit;
 }
 
-$tiempo_inactividad = 15; // segundos => 2 minutos
+$tiempo_inactividad = 120; // segundos => 2 minutos
 if ((!isset($_SESSION['ultima_actividad']) || empty($_SESSION['ultima_actividad'])) || (time() - $_SESSION['ultima_actividad'] > $tiempo_inactividad)) {    
     session_unset();
     session_destroy();
