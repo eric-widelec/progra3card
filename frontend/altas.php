@@ -1,89 +1,47 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Tarjetas - Creación de Usuario</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans min-h-screen flex flex-col justify-between">
+<?php
+// --- CONFIGURACIÓN DE CONEXIÓN ---
+$servername = "localhost";
+$username = "root";
+$password = "root";
+$dbname = "mi_banco_db";
 
-    <header class="bg-[#004691] text-white text-center py-4 shadow-md">
-        <h1 class="text-xl font-semibold">Mis <span class="font-bold">Tarjetas</span></h1>
-    </header>
+// --- DATOS RECIBIDOS DEL FORMULARIO REGISTRO.HTML ---
+$tipo_doc = $_POST['tipo_doc'];
+$documento = $_POST['documento'];
+$usuario = $_POST['usuario'];
+$passwordA = $_POST['passwordA'];
 
-    <main class="flex-grow flex items-center justify-center p-6">
-        <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full p-8">
-            <h2 class="text-2xl font-bold text-[#004691] mb-6 text-center">Activación de Usuario Web</h2>
-            
-            <form action="altas.php" method="POST" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Tipo de documento</label>
-                        <select name="tipo_doc" class="w-full p-3 border border-gray-300 rounded bg-gray-50 text-gray-700 focus:outline-none focus:border-blue-500">
-                            <option value="DNI">Documento Nacional de Identidad (DNI)</option>
-                            <option value="PASAPORTE">Pasaporte</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Número de documento</label>
-                        <input type="text" name="documento" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
+// --- INSTANCIA UN OBJETO "$conn" PERTENECIENTE A LA CLASE MYSQLI PROPIA DE PHP ---
+$conn = new mysqli($servername, $username, $password, $dbname);
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nombre</label>
-                        <input type="text" name="nombre" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Apellido</label>
-                        <input type="text" name="apellido" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
+// --- CHECK CONNECTION ---
+if ($conn->connect_error) {
+  die("Error en la conexión: " . $conn->connect_error);
+}
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Fecha de Nacimiento</label>
-                        <input type="date" name="fecha_nacimiento" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Correo Electrónico</label>
-                        <input type="email" name="email" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
+// --- ACTUALIZACIÓN EN BASE DE DATOS ---
+$sql = "UPDATE usuarios SET usuario = '".$usuario."', password = '".$passwordA."' 
+        WHERE documento = '".$documento."' AND tipo_doc = '".$tipo_doc."'";
 
-                <hr class="border-gray-200">
+if ($conn->query($sql) === TRUE) {
+    if ($conn->affected_rows > 0) {
+        echo "<script>
+                alert('¡Usuario web activado con éxito!');
+                window.location.href = 'ingreso.html';
+              </script>";
+    } else {
+        echo "<script>
+                alert('Operación denegada: No se encontró ningún cliente registrado con ese documento, o los datos ya estaban configurados.');
+                window.location.href = 'registro.html';
+              </script>";
+    }
+} else {
+    echo "<script>
+            alert('Error actualizando en la tabla: " . $conn->error . "');
+            window.location.href = 'registro.html';
+          </script>";
+}
 
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nombre de Usuario Web</label>
-                    <input type="text" name="usuario" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Contraseña</label>
-                        <input type="password" name="passwordA" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Repetir Contraseña</label>
-                        <input type="password" name="passwordB" required class="w-full p-3 border border-gray-300 rounded bg-gray-50 focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <button type="submit" name="registrar" class="w-full bg-[#004691] hover:bg-blue-800 text-white font-medium py-3 rounded-full transition duration-200">
-                    Activar Mi Cuenta Web
-                </button>
-            </form>
-
-            <div class="mt-4 text-center text-xs">
-                <a href="ingreso.html" class="text-[#004691] font-semibold hover:underline">¿Ya tenés usuario? Volver al Ingreso</a>
-            </div>
-        </div>
-    </main>
-
-    <footer class="bg-gray-50 text-[10px] text-gray-500 text-center p-4 border-t border-gray-200">
-        El Servicio Mis Tarjetas está disponible para todos aquellos socios que posean al menos una tarjeta Progra3card válida.
-    </footer>
-</body>
-</html>
+// --- CIERRE DE CONEXIÓN ---
+$conn->close();
+?>
