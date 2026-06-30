@@ -481,14 +481,26 @@ namespace Progra3Card.Administrativo
         static void MenuVerDetalleTarjeta()
         {
             Console.Clear();
-            Console.WriteLine("--- DETALLE DE TARJETA Y CLIENTE ---");
-            Console.Write("Ingrese el Número de Cuenta a consultar: ");
-            int numCuenta = Convert.ToInt32(Console.ReadLine());
+            Console.WriteLine("==================================================");
+            Console.WriteLine("       DETALLE DE TARJETA Y CLIENTE               ");
+            Console.WriteLine("==================================================");
 
-            // === A realizar ===
-            // Aquí deben realizar un SELECT con un JOIN entre 'tarjetas' y 'usuarios' 
-            // filtrando por el numCuenta para traer todos los campos (Nombre, Apellido, Email, Saldo, etc.)
+            // Validación proactiva del ingreso para evitar excepciones de formato
+            int numCuenta = 0;
+            while (true)
+            {
+                Console.Write("\nIngrese el Número de Cuenta a consultar: ");
+                if (int.TryParse(Console.ReadLine().Trim(), out numCuenta) && numCuenta > 0)
+                {
+                    break;
+                }
 
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️ Error: Ingrese un número de cuenta válido (mayor a 0).");
+                Console.ResetColor();
+            }
+
+            // Delegación de la lógica de persistencia al método especializado
             MostrarDetalleCompleto(numCuenta);
 
             Console.WriteLine("\nPresione una tecla para volver al menú...");
@@ -562,7 +574,75 @@ namespace Progra3Card.Administrativo
 
         static void MostrarDetalleCompleto(int cuenta)
         {
-            // Completar haciendo un SELECT con JOIN de usuarios y tarjetas WHERE num_cuenta = @cuenta
+            using (MySqlConnection conexion = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    conexion.Open();
+
+                    // Cruce de tablas uniendo la tarjeta con los datos del usuario titular
+                    string query = @"
+                SELECT 
+                    t.num_cuenta, t.numero_tarjeta, t.banco_emisor, t.estado, t.saldo,
+                    u.documento, u.tipo_doc, u.nombre, u.apellido, u.email, u.fecha_nacimiento
+                FROM tarjetas t
+                INNER JOIN usuarios u ON t.dni_titular = u.documento
+                WHERE t.num_cuenta = @numCuenta";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conexion))
+                    {
+                        cmd.Parameters.AddWithValue("@numCuenta", cuenta);
+
+                        using (MySqlDataReader lector = cmd.ExecuteReader())
+                        {
+                            // Solo habrá 1 o 0 resultados
+                            if (lector.Read())
+                            {
+                                Console.ForegroundColor = ConsoleColor.Cyan;
+                                Console.WriteLine("\n==================================================");
+                                Console.WriteLine("                 DATOS DEL CLIENTE                ");
+                                Console.WriteLine("==================================================");
+                                Console.WriteLine($"Titular:     {lector["nombre"]} {lector["apellido"]}");
+                                Console.WriteLine($"Documento:   {lector["tipo_doc"]} {lector["documento"]}");
+                                Console.WriteLine($"Email:       {lector["email"]}");
+
+                                // Formateo de fecha de nacimiento
+                                DateTime fechaNac = Convert.ToDateTime(lector["fecha_nacimiento"]);
+                                Console.WriteLine($"Nacimiento:  {fechaNac:yyyy-MM-dd}");
+
+                                Console.WriteLine("\n==================================================");
+                                Console.WriteLine("                 DATOS DE LA TARJETA              ");
+                                Console.WriteLine("==================================================");
+                                Console.WriteLine($"Nro Cuenta:  {lector["num_cuenta"]}");
+
+                                // Formateo del string de la tarjeta para visualización en 4 bloques
+                                string numTarjeta = lector["numero_tarjeta"].ToString();
+                                string tarjetaFormateada = $"{numTarjeta.Substring(0, 4)} {numTarjeta.Substring(4, 4)} {numTarjeta.Substring(8, 4)} {numTarjeta.Substring(12, 4)}";
+
+                                Console.WriteLine($"Nro Tarjeta: {tarjetaFormateada}");
+                                Console.WriteLine($"Banco:       {lector["banco_emisor"]}");
+                                Console.WriteLine($"Estado:      {lector["estado"]}");
+                                Console.WriteLine($"Saldo Actual:${lector["saldo"]}");
+                                Console.WriteLine("==================================================\n");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine($"\n⚠️ Operación denegada: No se encontró ningún cliente asociado a la cuenta Nro: {cuenta}.");
+                                Console.ResetColor();
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n❌ Ocurrió un error al intentar consultar los registros:");
+                    Console.WriteLine(ex.Message);
+                    Console.ResetColor();
+                }
+            }
         }
 
         static bool DarDeBajaTarjeta(int cuenta)
