@@ -14,10 +14,10 @@ $documento = $_POST['documento'];
 $usuario = $_POST['usuario'];
 $password_input = $_POST['password'];
 
-// --- INSTANCIA UN OBJETO PERTENECIENTE A LA CLASE MYSQLI ---
+// --- CONEXIÓN ---
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// --- CHECK CONNECTION ---
+// --- CHECK CONEXIÓN ---
 if ($conn->connect_error) {
   die("Error en la conexión: " . $conn->connect_error);
 }
@@ -33,11 +33,12 @@ $result = $conn->query($sql);
 
 // --- VERIFICACIÓN Y ALMACENAMIENTO EN SESIÓN ---
 if ($result && $result->num_rows > 0) {
-    // Si la validación es exitosa, se obtienen los datos
+    // Se obtienen los datos
     $row = $result->fetch_assoc();
     
-    // --- PERSISTENCIA EN SESIÓN ESTRICTA ---
+    // --- PERSISTENCIA EN SESIÓN  ---
     $_SESSION['usuario'] = $row['usuario'];
+    $_SESSION['ultima_actividad'] = time();
     
     // --- REDIRECCIÓN AL RESUMEN ---
     echo "<script>

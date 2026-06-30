@@ -109,8 +109,6 @@
 
     <script>
         document.querySelector('form').addEventListener('submit', function (e) {
-
-            // --- CAPTURA DE VALORES ---
             var tipoDoc = document.querySelector('select[name="tipo_doc"]').value.trim();
             var documento = document.querySelector('input[name="documento"]').value.trim();
             var usuario = document.querySelector('input[name="usuario"]').value.trim();
@@ -119,14 +117,14 @@
 
             // --- VALIDACIÓN DE CAMPOS VACÍOS ---
             if (tipoDoc === "" || documento === "" || usuario === "" || passA === "" || passB === "") {
-                alert("Error: Los campos Tipo de Documento, Número de Documento, Usuario y Contraseñas son estrictamente obligatorios y no pueden estar vacíos.");
+                alert("Error: Todos los campos son obligatorios.");
                 e.preventDefault();
                 return;
             }
 
             // --- VALIDACIÓN NUMÉRICA DE DOCUMENTO ---
             if (isNaN(documento)) {
-                alert("Error: El número de documento debe contener únicamente valores numéricos.");
+                alert("Error: El documento debe ser numérico.");
                 e.preventDefault();
                 return;
             }
@@ -139,6 +137,9 @@
             }
         });
     </script>
+    </body>
+    
+    </html>
 </body>
 
 </html>

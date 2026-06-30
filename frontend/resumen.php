@@ -2,7 +2,7 @@
 // --- INICIO Y VALIDACIÓN DE SESIÓN ---
 session_start();
 
-// --- CIERRE DE SESIÓN PROACTIVO ---
+// --- CIERRE DE SESIÓN ---
 if (isset($_GET['logout']) && $_GET['logout'] == 'true') {
     session_unset();
     session_destroy();
@@ -15,6 +15,15 @@ if (!isset($_SESSION['usuario']) || empty($_SESSION['usuario'])) {
     echo "<script>window.location.href = 'ingreso.html';</script>";
     exit;
 }
+
+$tiempo_inactividad = 15; // segundos => 2 minutos
+if ((!isset($_SESSION['ultima_actividad']) || empty($_SESSION['ultima_actividad'])) || (time() - $_SESSION['ultima_actividad'] > $tiempo_inactividad)) {    
+    session_unset();
+    session_destroy();
+    echo "<script>window.location.href = 'ingreso.html';</script>";
+    exit;
+}
+$_SESSION['ultima_actividad'] = time();
 
 // --- CONFIGURACIÓN DE CONEXIÓN ---
 $servername = "localhost";
@@ -63,11 +72,10 @@ if ($result_usuario && $result_usuario->num_rows > 0) {
 // --- CIERRE DE CONEXIÓN ---
 $conn->close();
 
-// --- SEPARACIÓN LÓGICA DE LIQUIDACIONES ---
+// --- SEPARACIÓN DE LIQUIDACIONES ---
 $ultima_liquidacion = count($liquidaciones) > 0 ? $liquidaciones[0] : null;
 $liquidaciones_anteriores = count($liquidaciones) > 1 ? array_slice($liquidaciones, 1) : [];
 
-// --- ASIGNACIÓN DIRECTA SIN FORMATEAR ---
 $num_tarjeta = $datos_usuario ? $datos_usuario['numero_tarjeta'] : "Sin Tarjeta";
 ?>
 

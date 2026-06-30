@@ -10,11 +10,21 @@ $tipo_doc = $_POST['tipo_doc'];
 $documento = $_POST['documento'];
 $usuario = $_POST['usuario'];
 $passwordA = $_POST['passwordA'];
+$passwordB = $_POST['passwordB'];
 
-// --- INSTANCIA UN OBJETO "$conn" PERTENECIENTE A LA CLASE MYSQLI PROPIA DE PHP ---
+// --- VALIDACIÓN DE COINCIDENCIA DE CONTRASEÑAS ---
+if ($passwordA !== $passwordB) {
+    echo "<script>
+            alert('Error: Las contraseñas no coinciden.');
+            window.location.href = 'registro.html';
+          </script>";
+    exit;
+}
+
+// --- CONEXIÓN ---
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// --- CHECK CONNECTION ---
+// --- CHECK CONEXIÓN ---
 if ($conn->connect_error) {
   die("Error en la conexión: " . $conn->connect_error);
 }
