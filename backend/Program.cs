@@ -502,7 +502,7 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("       ELIMINAR TARJETA Y CLIENTE (BAJA)          ");
             Console.WriteLine("==================================================");
 
-            // 1. Validación de ingreso numérico para la cuenta
+            // Validación de ingreso
             int numCuenta = 0;
             while (true)
             {
@@ -517,87 +517,37 @@ namespace Progra3Card.Administrativo
                 Console.ResetColor();
             }
 
-            using (MySqlConnection conexion = new MySqlConnection(connectionString))
+            // Confirmación de acción
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n⚠️ ADVERTENCIA: Se eliminará la cuenta, sus liquidaciones y TODOS los datos del cliente titular.");
+            Console.ResetColor();
+            Console.Write("¿Está seguro de continuar con la baja? (S/N): ");
+
+            if (Console.ReadLine().Trim().ToUpper() == "S")
             {
-                try
+                bool exito = DarDeBajaTarjeta(numCuenta);
+
+                if (exito)
                 {
-                    conexion.Open();
-
-                    // Validacion de existencia de número de cuenta y obtener el DNI del titular
-                    string dniTitular = "";
-                    string queryCheck = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @numCuenta";
-
-                    using (MySqlCommand cmdCheck = new MySqlCommand(queryCheck, conexion))
-                    {
-                        cmdCheck.Parameters.AddWithValue("@numCuenta", numCuenta);
-                        object result = cmdCheck.ExecuteScalar();
-
-                        // Si result es null, significa que no existe ninguna fila con ese número de cuenta
-                        if (result == null)
-                        {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine($"\n❌ Operación cancelada: No se encontró ninguna tarjeta registrada bajo la cuenta {numCuenta}.");
-                            Console.ResetColor();
-                            Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
-                            Console.ReadKey();
-                            return; // Aborta la operación y vuelve al menú
-                        }
-
-                        dniTitular = result.ToString();
-                    }
-
-                    // Confirmación de seguridad
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"\n⚠️ ADVERTENCIA: Se eliminará la cuenta {numCuenta}, sus liquidaciones y TODOS los datos del cliente (DNI {dniTitular}).");
-                    Console.ResetColor();
-                    Console.Write("¿Está seguro de continuar? (S/N): ");
-
-                    if (Console.ReadLine().Trim().ToUpper() == "S")
-                    {
-                        // Ejecucion de baja (Tarjeta y Usuario)
-                        string queryDelete = @"
-                    DELETE FROM tarjetas WHERE num_cuenta = @numCuenta;
-                    DELETE FROM usuarios WHERE documento = @dniTitular;";
-
-                        using (MySqlCommand cmdDelete = new MySqlCommand(queryDelete, conexion))
-                        {
-                            cmdDelete.Parameters.AddWithValue("@numCuenta", numCuenta);
-                            cmdDelete.Parameters.AddWithValue("@dniTitular", dniTitular);
-
-                            int filasAfectadas = cmdDelete.ExecuteNonQuery();
-
-                            if (filasAfectadas > 0)
-                            {
-                                Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine($"\n✅ ¡Baja exitosa! La tarjeta y el cliente (DNI {dniTitular}) han sido eliminados del sistema.");
-                                Console.ResetColor();
-                            }
-                            else
-                            {
-                                Console.ForegroundColor = ConsoleColor.Yellow;
-                                Console.WriteLine("\n⚠️ No se afectó ningún registro. Verifique el estado de la base de datos.");
-                                Console.ResetColor();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("\nOperación cancelada por el usuario.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("\n❌ Ocurrió un error inesperado de base de datos:");
-                    Console.WriteLine(ex.Message);
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("\n✅ ¡Baja exitosa! La tarjeta y el cliente han sido eliminados del sistema.");
                     Console.ResetColor();
                 }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"\n⚠️ Operación denegada: No se encontró ninguna tarjeta registrada bajo la cuenta {numCuenta}.");
+                    Console.ResetColor();
+                }
+            }
+            else
+            {
+                Console.WriteLine("\nOperación cancelada por el usuario.");
             }
 
             Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
             Console.ReadKey();
         }
-
 
         // =========================================================================
         // MÉTODOS BASE QUE DEBEN COMPLETAR CON LA LÓGICA 
@@ -617,8 +567,54 @@ namespace Progra3Card.Administrativo
 
         static bool DarDeBajaTarjeta(int cuenta)
         {
-            // Completar usando un DELETE FROM tarjetas WHERE num_cuenta = @cuenta
-            return false;
+            using (MySqlConnection conexion = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    conexion.Open();
+
+                    // Validacion de existencia y obtencion el DNI del titular
+                    string dniTitular = "";
+                    string queryCheck = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @numCuenta";
+
+                    using (MySqlCommand cmdCheck = new MySqlCommand(queryCheck, conexion))
+                    {
+                        cmdCheck.Parameters.AddWithValue("@numCuenta", cuenta);
+                        object result = cmdCheck.ExecuteScalar();
+
+                        if (result == null)
+                        {
+                            return false; // La cuenta no existe en la base de datos
+                        }
+
+                        dniTitular = result.ToString();
+                    }
+
+                    // Ejecucion de baja de ambos registros
+                    string queryDelete = @"
+                DELETE FROM tarjetas WHERE num_cuenta = @numCuenta;
+                DELETE FROM usuarios WHERE documento = @dniTitular;";
+
+                    using (MySqlCommand cmdDelete = new MySqlCommand(queryDelete, conexion))
+                    {
+                        cmdDelete.Parameters.AddWithValue("@numCuenta", cuenta);
+                        cmdDelete.Parameters.AddWithValue("@dniTitular", dniTitular);
+
+                        int filasAfectadas = cmdDelete.ExecuteNonQuery();
+
+                        return filasAfectadas > 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n❌ Ocurrió un error interno en la base de datos:");
+                    Console.WriteLine(ex.Message);
+                    Console.ResetColor();
+
+                    return false;
+                }
+            }
         }
     }
 }
