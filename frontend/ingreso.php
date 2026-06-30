@@ -1,68 +1,56 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Tarjetas - Ingreso</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans min-h-screen flex flex-col justify-between">
+<?php
+// --- INICIO DE SESIÓN ---
+session_start();
 
-    <header class="bg-[#004691] text-white text-center py-4 shadow-md">
-        <h1 class="text-xl font-semibold">Mis <span class="font-bold">Tarjetas</span></h1>
-    </header>
+// --- CONFIGURACIÓN DE CONEXIÓN ---
+$servername = "localhost";
+$username = "root";
+$password = "root";
+$dbname = "mi_banco_db";
 
-    <main class="flex-grow flex flex-col md:flex-row items-stretch">
-        <div class="hidden md:flex md:w-1/2 bg-gradient-to-tr from-gray-200 to-gray-50 flex-col justify-center px-16 relative overflow-hidden">
-            <div class="z-10">
-                <p class="text-gray-500 text-lg">Mis Tarjetas</p>
-                <h2 class="text-[#004691] text-4xl font-bold mt-2 leading-tight">Consultá tus liquidaciones en tiempo real.</h2>
-            </div>
-        </div>
-        
-        <div class="w-full md:w-1/2 flex items-center justify-center p-8 bg-white">
-            <div class="max-w-md w-full">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Ingresar a tu cuenta</h2>
-                
-                <form action="ingreso.php" method="POST" class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Tipo de doc.</label>
-                            <select name="tipo_doc" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-gray-50 text-gray-700">
-                                <option value="DNI">DNI</option>
-                                <option value="PASAPORTE">Pasaporte</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Documento</label>
-                            <input type="text" name="documento" required class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-gray-50">
-                        </div>
-                    </div>
+// --- DATOS RECIBIDOS DEL FORMULARIO INGRESO.HTML ---
+$tipo_doc = $_POST['tipo_doc'];
+$documento = $_POST['documento'];
+$usuario = $_POST['usuario'];
+$password_input = $_POST['password'];
 
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Usuario Web</label>
-                        <input type="text" name="usuario" required class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-gray-50">
-                    </div>
+// --- INSTANCIA UN OBJETO PERTENECIENTE A LA CLASE MYSQLI ---
+$conn = new mysqli($servername, $username, $password, $dbname);
 
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Contraseña</label>
-                        <input type="password" name="password" required class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-gray-50">
-                    </div>
+// --- CHECK CONNECTION ---
+if ($conn->connect_error) {
+  die("Error en la conexión: " . $conn->connect_error);
+}
 
-                    <button type="submit" name="ingresar" class="w-full bg-[#004691] hover:bg-blue-800 text-white font-medium py-3 rounded-full mt-6 transition duration-200">
-                        Ingresar
-                    </button>
-                </form>
+// --- CONSULTA PARA VALIDAR CREDENCIALES ---
+$sql = "SELECT usuario FROM usuarios 
+        WHERE documento = '".$documento."' 
+        AND tipo_doc = '".$tipo_doc."' 
+        AND usuario = '".$usuario."' 
+        AND password = '".$password_input."'";
 
-                <div class="mt-6 text-center space-y-2 text-xs">
-                    <p><a href="registro.php" class="text-[#004691] font-semibold hover:underline">¿No tenés una cuenta? Registrate</a></p>
-                </div>
-            </div>
-        </div>
-    </main>
+$result = $conn->query($sql);
 
-    <footer class="bg-gray-50 text-[10px] text-gray-500 text-center p-4 border-t border-gray-200">
-        Portal Oficial de Consultas de Liquidaciones Progra3card.
-    </footer>
-</body>
-</html>
+// --- VERIFICACIÓN Y ALMACENAMIENTO EN SESIÓN ---
+if ($result && $result->num_rows > 0) {
+    // Si la validación es exitosa, se obtienen los datos
+    $row = $result->fetch_assoc();
+    
+    // --- PERSISTENCIA EN SESIÓN ESTRICTA ---
+    $_SESSION['usuario'] = $row['usuario'];
+    
+    // --- REDIRECCIÓN AL RESUMEN ---
+    echo "<script>
+            window.location.href = 'resumen.php';
+          </script>";
+} else {
+    // Si los datos son incorrectos
+    echo "<script>
+            alert('Error: Credenciales incorrectas o usuario no registrado.');
+            window.location.href = 'ingreso.html';
+          </script>";
+}
+
+// --- CIERRE DE CONEXIÓN ---
+$conn->close();
+?>
