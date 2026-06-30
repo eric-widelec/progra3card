@@ -41,7 +41,7 @@ namespace Progra3Card.Administrativo
             }
         }
 
-        // Funciones a completar:
+        // --- MÉTODOS DEL MENÚ ---
 
         static void MenuEmitirTarjeta()
         {
@@ -81,7 +81,7 @@ namespace Progra3Card.Administrativo
                 apellido = Console.ReadLine().Trim();
             }
 
-            // Validación del formato de fecha
+            // --- VALIDACIÓN DE FECHA ---
             string fechaNac = "";
             while (true)
             {
@@ -97,12 +97,12 @@ namespace Progra3Card.Administrativo
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("⚠️ Error: Formato incorrecto o fecha inexistente. Ingrese respetando la estructura YYYY-MM-DD.");
+                    Console.WriteLine("⚠️ Error: Fecha inexistente o estructura incorrecta. Ingrese respetando YYYY-MM-DD.");
                     Console.ResetColor();
                 }
             }
 
-            // Validación de obligatoriedad y estructura de email
+            // --- VALIDACIÓN DE EMAIL ---
             string email = "";
             while (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
             {
@@ -148,7 +148,7 @@ namespace Progra3Card.Administrativo
                 }
             }
 
-            // --- INGRESO OPCIONAL DE SALDO ---
+            // --- INGRESO DE SALDO ---
             decimal saldoInicial = 0;
             while (true)
             {
@@ -157,11 +157,10 @@ namespace Progra3Card.Administrativo
 
                 if (string.IsNullOrWhiteSpace(inputSaldo))
                 {
-                    saldoInicial = 0; // Toma el valor por defecto si no ingresa nada
+                    saldoInicial = 0;
                     break;
                 }
 
-                // Si ingresa un valor, debe ser numérico y mayor a cero
                 if (decimal.TryParse(inputSaldo, out saldoInicial) && saldoInicial > 0)
                 {
                     break;
@@ -172,14 +171,14 @@ namespace Progra3Card.Administrativo
                 Console.ResetColor();
             }
 
-            // --- VALIDACIONES Y PERSISTENCIA (USUARIO + TARJETA) ---
+            // --- PERSISTENCIA EN BASE DE DATOS ---
             using (MySqlConnection conexion = new MySqlConnection(connectionString))
             {
                 try
                 {
                     conexion.Open();
 
-                    // Validación de Cliente (Documento + Tipo)
+                    // --- VALIDACIÓN DE CLIENTE ---
                     string queryCheckUsuario = "SELECT COUNT(*) FROM usuarios WHERE documento = @documento AND tipo_doc = @tipoDoc";
                     using (MySqlCommand cmdCheckUsuario = new MySqlCommand(queryCheckUsuario, conexion))
                     {
@@ -199,7 +198,7 @@ namespace Progra3Card.Administrativo
                         }
                     }
 
-                    // Validación de Email
+                    // --- VALIDACIÓN DE EMAIL ---
                     string queryCheckEmail = "SELECT COUNT(*) FROM usuarios WHERE email = @email";
                     using (MySqlCommand cmdCheckEmail = new MySqlCommand(queryCheckEmail, conexion))
                     {
@@ -217,7 +216,7 @@ namespace Progra3Card.Administrativo
                         }
                     }
 
-                    // Generación y Validación de Tarjeta
+                    // --- GENERACIÓN DE TARJETA ---
                     Random rnd = new Random();
                     string numeroTarjeta = "";
                     bool tarjetaLibre = false;
@@ -244,7 +243,7 @@ namespace Progra3Card.Administrativo
                         }
                     }
 
-                    // Inserción del Cliente
+                    // --- INSERCIÓN DE CLIENTE ---
                     string queryUsuario = @"INSERT INTO usuarios (documento, tipo_doc, nombre, apellido, fecha_nacimiento, email) 
                             VALUES (@documento, @tipoDoc, @nombre, @apellido, @fechaNacimiento, @email)";
 
@@ -264,7 +263,7 @@ namespace Progra3Card.Administrativo
                             Console.ForegroundColor = ConsoleColor.Green;
                             Console.WriteLine("\n✅ ¡Usuario cliente registrado exitosamente en el sistema!");
 
-                            // Inserción de la Tarjeta vinculada al Cliente (Se incluye @saldo)
+                            // --- INSERCIÓN DE TARJETA ---
                             string queryTarjeta = @"INSERT INTO tarjetas (numero_tarjeta, banco_emisor, dni_titular, saldo) 
                                     VALUES (@numTarjeta, @banco, @dniTitular, @saldo)";
 
@@ -303,6 +302,7 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
             Console.ReadKey();
         }
+
         static void MenuEmitirLiquidacion()
         {
             Console.Clear();
@@ -330,7 +330,7 @@ namespace Progra3Card.Administrativo
                 {
                     conexion.Open();
 
-                    // Validación de número de cuenta
+                    // --- VALIDACIÓN DE CUENTA ---
                     string queryCheckCuenta = "SELECT COUNT(*) FROM tarjetas WHERE num_cuenta = @numCuenta";
                     using (MySqlCommand cmdCheckCuenta = new MySqlCommand(queryCheckCuenta, conexion))
                     {
@@ -344,23 +344,21 @@ namespace Progra3Card.Administrativo
                             Console.ResetColor();
                             Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
                             Console.ReadKey();
-                            return; // vuelve al menú principal
+                            return;
                         }
                     }
 
-                    // Ingreso y Validación de Periodo
+                    // --- VALIDACIÓN DE PERIODO ---
                     string periodo = "";
                     while (true)
                     {
                         Console.Write("Periodo a liquidar (YYYY-MM): ");
                         periodo = Console.ReadLine().Trim();
 
-                        // Validación estructural
                         if (periodo.Length == 7 && periodo[4] == '-' &&
                             int.TryParse(periodo.Substring(0, 4), out _) &&
                             int.TryParse(periodo.Substring(5, 2), out int mes) && mes >= 1 && mes <= 12)
                         {
-                            // Validación en base de datos
                             string queryCheckPeriodo = "SELECT COUNT(*) FROM liquidaciones WHERE num_cuenta = @numCuenta AND periodo = @periodo";
                             using (MySqlCommand cmdCheckPeriodo = new MySqlCommand(queryCheckPeriodo, conexion))
                             {
@@ -376,19 +374,19 @@ namespace Progra3Card.Administrativo
                                 }
                                 else
                                 {
-                                    break; // Formato correcto y sin duplicados, salimos del bucle
+                                    break;
                                 }
                             }
                         }
                         else
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine("⚠️ Error: Formato de periodo incorrecto. Use estrictamente YYYY-MM (ej: 2026-05).");
+                            Console.WriteLine("⚠️ Error: Estructura de periodo incorrecta. Use estrictamente YYYY-MM (ej: 2026-05).");
                             Console.ResetColor();
                         }
                     }
 
-                    // Validación de fecha
+                    // --- VALIDACIÓN DE FECHA ---
                     string fechaVencimiento = "";
                     while (true)
                     {
@@ -404,12 +402,12 @@ namespace Progra3Card.Administrativo
                         else
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine("⚠️ Error: Formato incorrecto o fecha inexistente. Ingrese respetando la estructura YYYY-MM-DD.");
+                            Console.WriteLine("⚠️ Error: Fecha inexistente o estructura incorrecta. Ingrese respetando YYYY-MM-DD.");
                             Console.ResetColor();
                         }
                     }
 
-                    // Validacion de ingreso superior/igual a 0
+                    // --- VALIDACIÓN DE MONTOS ---
                     decimal totalPagar = 0;
                     while (true)
                     {
@@ -449,7 +447,7 @@ namespace Progra3Card.Administrativo
                         }
                     }
 
-                    // Persistencia
+                    // --- PERSISTENCIA EN BASE DE DATOS ---
                     string queryInsert = @"INSERT INTO liquidaciones (num_cuenta, periodo, fecha_vencimiento, total_a_pagar, pago_minimo) 
                                    VALUES (@numCuenta, @periodo, @fechaVencimiento, @totalPagar, @pagoMinimo)";
 
@@ -491,12 +489,10 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("                                  LISTADO GENERAL DE TARJETAS                                        ");
             Console.WriteLine("=====================================================================================================");
 
-            // Se amplía la cabecera para mostrar el resultado del cruce con la tabla usuarios
             Console.WriteLine("{0,-10} | {1,-19} | {2,-18} | {3,-12} | {4,-25}",
                 "Nro Cuenta", "Nro Tarjeta", "Banco Emisor", "DNI Titular", "Nombre y Apellido");
             Console.WriteLine("-----------------------------------------------------------------------------------------------------");
 
-            // Delegación de la lógica de acceso a datos
             ObtenerYMostrarTarjetas();
 
             Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
@@ -510,7 +506,7 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("       DETALLE DE TARJETA Y CLIENTE               ");
             Console.WriteLine("==================================================");
 
-            // Validación proactiva del ingreso para evitar excepciones de formato
+            // --- VALIDACIÓN DE INGRESO ---
             int numCuenta = 0;
             while (true)
             {
@@ -525,7 +521,6 @@ namespace Progra3Card.Administrativo
                 Console.ResetColor();
             }
 
-            // Delegación de la lógica de persistencia al método especializado
             MostrarDetalleCompleto(numCuenta);
 
             Console.WriteLine("\nPresione una tecla para volver al menú...");
@@ -539,7 +534,7 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("       ELIMINAR TARJETA Y CLIENTE (BAJA)          ");
             Console.WriteLine("==================================================");
 
-            // Validación de ingreso
+            // --- VALIDACIÓN DE INGRESO ---
             int numCuenta = 0;
             while (true)
             {
@@ -554,7 +549,7 @@ namespace Progra3Card.Administrativo
                 Console.ResetColor();
             }
 
-            // Confirmación de acción
+            // --- CONFIRMACIÓN DE ACCIÓN ---
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\n⚠️ ADVERTENCIA: Se eliminará la cuenta, sus liquidaciones y TODOS los datos del cliente titular.");
             Console.ResetColor();
@@ -587,7 +582,7 @@ namespace Progra3Card.Administrativo
         }
 
         // =========================================================================
-        // MÉTODOS BASE QUE DEBEN COMPLETAR CON LA LÓGICA 
+        // MÉTODOS AUXILIARES Y DE BASE DE DATOS
         // =========================================================================
 
         static void ObtenerYMostrarTarjetas()
@@ -617,8 +612,6 @@ namespace Progra3Card.Administrativo
                                 hayRegistros = true;
 
                                 string numCuenta = lector["num_cuenta"].ToString();
-
-                                // Formateo del string de la tarjeta para visualización en 4 bloques
                                 string numTarjeta = lector["numero_tarjeta"].ToString();
                                 string tarjetaFormateada = "";
 
@@ -628,14 +621,13 @@ namespace Progra3Card.Administrativo
                                 }
                                 else
                                 {
-                                    tarjetaFormateada = numTarjeta; // Fallback por si hay un dato anómalo
+                                    tarjetaFormateada = numTarjeta;
                                 }
 
                                 string banco = lector["banco_emisor"].ToString();
                                 string dni = lector["documento"].ToString();
                                 string titular = $"{lector["nombre"]} {lector["apellido"]}";
 
-                                // Impresión de la fila respetando el formato de la cabecera
                                 Console.WriteLine("{0,-10} | {1,-19} | {2,-18} | {3,-12} | {4,-25}",
                                     numCuenta, tarjetaFormateada, banco, dni, titular);
                             }
@@ -668,7 +660,6 @@ namespace Progra3Card.Administrativo
                 {
                     conexion.Open();
 
-                    // Cruce de tablas uniendo la tarjeta con los datos del usuario titular
                     string query = @"
                 SELECT 
                     t.num_cuenta, t.numero_tarjeta, t.banco_emisor, t.estado, t.saldo,
@@ -683,7 +674,6 @@ namespace Progra3Card.Administrativo
 
                         using (MySqlDataReader lector = cmd.ExecuteReader())
                         {
-                            // Solo habrá 1 o 0 resultados
                             if (lector.Read())
                             {
                                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -694,7 +684,6 @@ namespace Progra3Card.Administrativo
                                 Console.WriteLine($"Documento:   {lector["tipo_doc"]} {lector["documento"]}");
                                 Console.WriteLine($"Email:       {lector["email"]}");
 
-                                // Formateo de fecha de nacimiento
                                 DateTime fechaNac = Convert.ToDateTime(lector["fecha_nacimiento"]);
                                 Console.WriteLine($"Nacimiento:  {fechaNac:yyyy-MM-dd}");
 
@@ -703,7 +692,6 @@ namespace Progra3Card.Administrativo
                                 Console.WriteLine("==================================================");
                                 Console.WriteLine($"Nro Cuenta:  {lector["num_cuenta"]}");
 
-                                // Formateo del string de la tarjeta para visualización en 4 bloques
                                 string numTarjeta = lector["numero_tarjeta"].ToString();
                                 string tarjetaFormateada = $"{numTarjeta.Substring(0, 4)} {numTarjeta.Substring(4, 4)} {numTarjeta.Substring(8, 4)} {numTarjeta.Substring(12, 4)}";
 
@@ -741,7 +729,7 @@ namespace Progra3Card.Administrativo
                 {
                     conexion.Open();
 
-                    // Validacion de existencia y obtencion el DNI del titular
+                    // --- VALIDACIÓN DE EXISTENCIA ---
                     string dniTitular = "";
                     string queryCheck = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @numCuenta";
 
@@ -752,13 +740,13 @@ namespace Progra3Card.Administrativo
 
                         if (result == null)
                         {
-                            return false; // La cuenta no existe en la base de datos
+                            return false;
                         }
 
                         dniTitular = result.ToString();
                     }
 
-                    // Ejecucion de baja de ambos registros
+                    // --- ELIMINACIÓN DE REGISTROS ---
                     string queryDelete = @"
                 DELETE FROM tarjetas WHERE num_cuenta = @numCuenta;
                 DELETE FROM usuarios WHERE documento = @dniTitular;";
