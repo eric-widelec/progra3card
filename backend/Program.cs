@@ -88,12 +88,11 @@ namespace Progra3Card.Administrativo
                 Console.Write("Fecha de Nacimiento (YYYY-MM-DD): ");
                 fechaNac = Console.ReadLine().Trim();
 
-                // Verifica el formato exacto y que la fecha sea válida en el calendario
                 if (DateTime.TryParseExact(fechaNac, "yyyy-MM-dd",
                     System.Globalization.CultureInfo.InvariantCulture,
                     System.Globalization.DateTimeStyles.None, out _))
                 {
-                    break; // Es una fecha válida, salimos del bucle
+                    break;
                 }
                 else
                 {
@@ -147,6 +146,30 @@ namespace Progra3Card.Administrativo
                         Console.ResetColor();
                         break;
                 }
+            }
+
+            // --- INGRESO OPCIONAL DE SALDO ---
+            decimal saldoInicial = 0;
+            while (true)
+            {
+                Console.Write("\nSaldo Inicial ($) [Opcional - Presione Enter para $0.00]: ");
+                string inputSaldo = Console.ReadLine().Trim();
+
+                if (string.IsNullOrWhiteSpace(inputSaldo))
+                {
+                    saldoInicial = 0; // Toma el valor por defecto si no ingresa nada
+                    break;
+                }
+
+                // Si ingresa un valor, debe ser numérico y mayor a cero
+                if (decimal.TryParse(inputSaldo, out saldoInicial) && saldoInicial > 0)
+                {
+                    break;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️ Error: Si ingresa un saldo, debe ser un valor numérico mayor a 0.");
+                Console.ResetColor();
             }
 
             // --- VALIDACIONES Y PERSISTENCIA (USUARIO + TARJETA) ---
@@ -223,7 +246,7 @@ namespace Progra3Card.Administrativo
 
                     // Inserción del Cliente
                     string queryUsuario = @"INSERT INTO usuarios (documento, tipo_doc, nombre, apellido, fecha_nacimiento, email) 
-                                    VALUES (@documento, @tipoDoc, @nombre, @apellido, @fechaNacimiento, @email)";
+                            VALUES (@documento, @tipoDoc, @nombre, @apellido, @fechaNacimiento, @email)";
 
                     using (MySqlCommand comandoUsuario = new MySqlCommand(queryUsuario, conexion))
                     {
@@ -241,15 +264,16 @@ namespace Progra3Card.Administrativo
                             Console.ForegroundColor = ConsoleColor.Green;
                             Console.WriteLine("\n✅ ¡Usuario cliente registrado exitosamente en el sistema!");
 
-                            // Inserción de la Tarjeta vinculada al Cliente
-                            string queryTarjeta = @"INSERT INTO tarjetas (numero_tarjeta, banco_emisor, dni_titular) 
-                                            VALUES (@numTarjeta, @banco, @dniTitular)";
+                            // Inserción de la Tarjeta vinculada al Cliente (Se incluye @saldo)
+                            string queryTarjeta = @"INSERT INTO tarjetas (numero_tarjeta, banco_emisor, dni_titular, saldo) 
+                                    VALUES (@numTarjeta, @banco, @dniTitular, @saldo)";
 
                             using (MySqlCommand comandoTarjeta = new MySqlCommand(queryTarjeta, conexion))
                             {
                                 comandoTarjeta.Parameters.AddWithValue("@numTarjeta", numeroTarjeta);
                                 comandoTarjeta.Parameters.AddWithValue("@banco", bancoEmisor);
                                 comandoTarjeta.Parameters.AddWithValue("@dniTitular", documento);
+                                comandoTarjeta.Parameters.AddWithValue("@saldo", saldoInicial);
 
                                 int filasTarjeta = comandoTarjeta.ExecuteNonQuery();
 
@@ -260,7 +284,7 @@ namespace Progra3Card.Administrativo
                                     Console.WriteLine($"Número: {numeroTarjeta.Substring(0, 4)} {numeroTarjeta.Substring(4, 4)} {numeroTarjeta.Substring(8, 4)} {numeroTarjeta.Substring(12, 4)}");
                                     Console.WriteLine($"Banco: {bancoEmisor}");
                                     Console.WriteLine($"Titular DNI: {documento}");
-                                    Console.WriteLine($"Estado: Activa (Saldo inicial: $0.00)");
+                                    Console.WriteLine($"Estado: Activa (Saldo inicial: ${saldoInicial:F2})");
                                 }
                             }
                             Console.ResetColor();
@@ -279,7 +303,6 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
             Console.ReadKey();
         }
-
         static void MenuEmitirLiquidacion()
         {
             Console.Clear();
