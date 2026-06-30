@@ -50,7 +50,7 @@ namespace Progra3Card.Administrativo
             Console.WriteLine("           EMITIR NUEVA TARJETA (ALTA)            ");
             Console.WriteLine("==================================================");
 
-            // --- 1. DATOS DEL CLIENTE ---
+            // --- DATOS DEL CLIENTE ---
             Console.WriteLine("\n--- Datos del Cliente ---");
 
             string tipoDoc = "";
@@ -67,7 +67,6 @@ namespace Progra3Card.Administrativo
                 documento = Console.ReadLine().Trim();
             }
 
-            // Campos ahora obligatorios según la estructura de la base de datos
             string nombre = "";
             while (string.IsNullOrWhiteSpace(nombre))
             {
@@ -82,7 +81,7 @@ namespace Progra3Card.Administrativo
                 apellido = Console.ReadLine().Trim();
             }
 
-            // Validación proactiva y estricta del formato de fecha
+            // Validación del formato de fecha
             string fechaNac = "";
             while (true)
             {
@@ -104,7 +103,7 @@ namespace Progra3Card.Administrativo
                 }
             }
 
-            // Validación de obligatoriedad y estructura básica de email
+            // Validación de obligatoriedad y estructura de email
             string email = "";
             while (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
             {
@@ -119,7 +118,7 @@ namespace Progra3Card.Administrativo
                 }
             }
 
-            // --- 2. SELECCIÓN DEL BANCO EMISOR ---
+            // --- SELECCIÓN DEL BANCO EMISOR ---
             string bancoEmisor = "";
             bool bancoValido = false;
 
@@ -150,7 +149,7 @@ namespace Progra3Card.Administrativo
                 }
             }
 
-            // --- 3. VALIDACIONES Y PERSISTENCIA (USUARIO + TARJETA) ---
+            // --- VALIDACIONES Y PERSISTENCIA (USUARIO + TARJETA) ---
             using (MySqlConnection conexion = new MySqlConnection(connectionString))
             {
                 try
@@ -283,7 +282,183 @@ namespace Progra3Card.Administrativo
 
         static void MenuEmitirLiquidacion()
         {
-            throw new NotImplementedException();
+            Console.Clear();
+            Console.WriteLine("==================================================");
+            Console.WriteLine("           EMITIR NUEVA LIQUIDACIÓN               ");
+            Console.WriteLine("==================================================");
+
+            int numCuenta = 0;
+            while (true)
+            {
+                Console.Write("\nIngrese el Número de Cuenta: ");
+                if (int.TryParse(Console.ReadLine().Trim(), out numCuenta) && numCuenta > 0)
+                {
+                    break;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️ Error: Ingrese un número de cuenta válido (mayor a 0).");
+                Console.ResetColor();
+            }
+
+            using (MySqlConnection conexion = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    conexion.Open();
+
+                    // Validación de número de cuenta
+                    string queryCheckCuenta = "SELECT COUNT(*) FROM tarjetas WHERE num_cuenta = @numCuenta";
+                    using (MySqlCommand cmdCheckCuenta = new MySqlCommand(queryCheckCuenta, conexion))
+                    {
+                        cmdCheckCuenta.Parameters.AddWithValue("@numCuenta", numCuenta);
+                        int cuentaExiste = Convert.ToInt32(cmdCheckCuenta.ExecuteScalar());
+
+                        if (cuentaExiste == 0)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"\n❌ Operación cancelada: No existe ninguna tarjeta registrada bajo la cuenta {numCuenta}.");
+                            Console.ResetColor();
+                            Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
+                            Console.ReadKey();
+                            return; // vuelve al menú principal
+                        }
+                    }
+
+                    // Ingreso y Validación de Periodo
+                    string periodo = "";
+                    while (true)
+                    {
+                        Console.Write("Periodo a liquidar (YYYY-MM): ");
+                        periodo = Console.ReadLine().Trim();
+
+                        // Validación estructural
+                        if (periodo.Length == 7 && periodo[4] == '-' &&
+                            int.TryParse(periodo.Substring(0, 4), out _) &&
+                            int.TryParse(periodo.Substring(5, 2), out int mes) && mes >= 1 && mes <= 12)
+                        {
+                            // Validación en base de datos
+                            string queryCheckPeriodo = "SELECT COUNT(*) FROM liquidaciones WHERE num_cuenta = @numCuenta AND periodo = @periodo";
+                            using (MySqlCommand cmdCheckPeriodo = new MySqlCommand(queryCheckPeriodo, conexion))
+                            {
+                                cmdCheckPeriodo.Parameters.AddWithValue("@numCuenta", numCuenta);
+                                cmdCheckPeriodo.Parameters.AddWithValue("@periodo", periodo);
+                                int periodoExiste = Convert.ToInt32(cmdCheckPeriodo.ExecuteScalar());
+
+                                if (periodoExiste > 0)
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    Console.WriteLine($"\n❌ Error: Ya existe una liquidación generada para el periodo {periodo} en la cuenta {numCuenta}.");
+                                    Console.ResetColor();
+                                }
+                                else
+                                {
+                                    break; // Formato correcto y sin duplicados, salimos del bucle
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine("⚠️ Error: Formato de periodo incorrecto. Use estrictamente YYYY-MM (ej: 2026-05).");
+                            Console.ResetColor();
+                        }
+                    }
+
+                    // Validación de fecha
+                    string fechaVencimiento = "";
+                    while (true)
+                    {
+                        Console.Write("Fecha de Vencimiento (YYYY-MM-DD): ");
+                        fechaVencimiento = Console.ReadLine().Trim();
+
+                        if (DateTime.TryParseExact(fechaVencimiento, "yyyy-MM-dd",
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out _))
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine("⚠️ Error: Formato incorrecto o fecha inexistente. Ingrese respetando la estructura YYYY-MM-DD.");
+                            Console.ResetColor();
+                        }
+                    }
+
+                    // Validacion de ingreso superior/igual a 0
+                    decimal totalPagar = 0;
+                    while (true)
+                    {
+                        Console.Write("Total a Pagar ($): ");
+                        if (decimal.TryParse(Console.ReadLine().Trim(), out totalPagar) && totalPagar >= 0)
+                        {
+                            break;
+                        }
+
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("⚠️ Error: El total a pagar debe ser un valor numérico superior o igual a 0.");
+                        Console.ResetColor();
+                    }
+
+                    decimal pagoMinimo = 0;
+                    while (true)
+                    {
+                        Console.Write("Pago Mínimo ($): ");
+                        if (decimal.TryParse(Console.ReadLine().Trim(), out pagoMinimo) && pagoMinimo >= 0)
+                        {
+                            if (pagoMinimo > totalPagar)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine("⚠️ Error: El pago mínimo no puede ser mayor al total a pagar.");
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine("⚠️ Error: El pago mínimo debe ser un valor numérico superior o igual a 0.");
+                            Console.ResetColor();
+                        }
+                    }
+
+                    // Persistencia
+                    string queryInsert = @"INSERT INTO liquidaciones (num_cuenta, periodo, fecha_vencimiento, total_a_pagar, pago_minimo) 
+                                   VALUES (@numCuenta, @periodo, @fechaVencimiento, @totalPagar, @pagoMinimo)";
+
+                    using (MySqlCommand cmdInsert = new MySqlCommand(queryInsert, conexion))
+                    {
+                        cmdInsert.Parameters.AddWithValue("@numCuenta", numCuenta);
+                        cmdInsert.Parameters.AddWithValue("@periodo", periodo);
+                        cmdInsert.Parameters.AddWithValue("@fechaVencimiento", fechaVencimiento);
+                        cmdInsert.Parameters.AddWithValue("@totalPagar", totalPagar);
+                        cmdInsert.Parameters.AddWithValue("@pagoMinimo", pagoMinimo);
+
+                        int filasAfectadas = cmdInsert.ExecuteNonQuery();
+
+                        if (filasAfectadas > 0)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.WriteLine($"\n✅ ¡Liquidación del periodo {periodo} registrada exitosamente para la cuenta {numCuenta}!");
+                            Console.ResetColor();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n❌ Ocurrió un error inesperado de base de datos:");
+                    Console.WriteLine(ex.Message);
+                    Console.ResetColor();
+                }
+            }
+
+            Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
+            Console.ReadKey();
         }
 
         static void MenuListarTarjetas()
