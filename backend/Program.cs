@@ -487,17 +487,19 @@ namespace Progra3Card.Administrativo
         static void MenuListarTarjetas()
         {
             Console.Clear();
-            Console.WriteLine("--- LISTADO GENERAL DE TARJETAS ---");
-            Console.WriteLine("{0,-12} {1,-18} {2,-20} {3,-15}", "Nro Cuenta", "Nro Tarjeta", "Banco Emisor", "DNI Titular");
-            Console.WriteLine("----------------------------------------------------------------------");
+            Console.WriteLine("=====================================================================================================");
+            Console.WriteLine("                                  LISTADO GENERAL DE TARJETAS                                        ");
+            Console.WriteLine("=====================================================================================================");
 
-            // === A realizar ===
-            // Aquí deben implementar un SELECT sobre la tabla 'tarjetas'
-            // para recorrer las filas e imprimirlas en la consola.
+            // Se amplía la cabecera para mostrar el resultado del cruce con la tabla usuarios
+            Console.WriteLine("{0,-10} | {1,-19} | {2,-18} | {3,-12} | {4,-25}",
+                "Nro Cuenta", "Nro Tarjeta", "Banco Emisor", "DNI Titular", "Nombre y Apellido");
+            Console.WriteLine("-----------------------------------------------------------------------------------------------------");
 
+            // Delegación de la lógica de acceso a datos
             ObtenerYMostrarTarjetas();
 
-            Console.WriteLine("\nPresione una tecla para volver al menú...");
+            Console.WriteLine("\nPresione cualquier tecla para volver al menú...");
             Console.ReadKey();
         }
 
@@ -590,9 +592,72 @@ namespace Progra3Card.Administrativo
 
         static void ObtenerYMostrarTarjetas()
         {
-            // Completar 
-            // Ejemplo de impresión dentro del bucle: 
-            // Console.WriteLine("{0,-12} {1,-18} {2,-20} {3,-15}", reader["num_cuenta"], reader["numero_tarjeta"], ...);
+            using (MySqlConnection conexion = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    conexion.Open();
+
+                    string query = @"
+                SELECT 
+                    t.num_cuenta, t.numero_tarjeta, t.banco_emisor, 
+                    u.documento, u.nombre, u.apellido 
+                FROM tarjetas t
+                INNER JOIN usuarios u ON t.dni_titular = u.documento
+                ORDER BY t.num_cuenta ASC";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conexion))
+                    {
+                        using (MySqlDataReader lector = cmd.ExecuteReader())
+                        {
+                            bool hayRegistros = false;
+
+                            while (lector.Read())
+                            {
+                                hayRegistros = true;
+
+                                string numCuenta = lector["num_cuenta"].ToString();
+
+                                // Formateo del string de la tarjeta para visualización en 4 bloques
+                                string numTarjeta = lector["numero_tarjeta"].ToString();
+                                string tarjetaFormateada = "";
+
+                                if (numTarjeta.Length == 16)
+                                {
+                                    tarjetaFormateada = $"{numTarjeta.Substring(0, 4)} {numTarjeta.Substring(4, 4)} {numTarjeta.Substring(8, 4)} {numTarjeta.Substring(12, 4)}";
+                                }
+                                else
+                                {
+                                    tarjetaFormateada = numTarjeta; // Fallback por si hay un dato anómalo
+                                }
+
+                                string banco = lector["banco_emisor"].ToString();
+                                string dni = lector["documento"].ToString();
+                                string titular = $"{lector["nombre"]} {lector["apellido"]}";
+
+                                // Impresión de la fila respetando el formato de la cabecera
+                                Console.WriteLine("{0,-10} | {1,-19} | {2,-18} | {3,-12} | {4,-25}",
+                                    numCuenta, tarjetaFormateada, banco, dni, titular);
+                            }
+
+                            if (!hayRegistros)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine("⚠️ No hay tarjetas registradas en el sistema en este momento.");
+                                Console.ResetColor();
+                            }
+                        }
+                    }
+                    Console.WriteLine("=====================================================================================================");
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\n❌ Ocurrió un error al intentar consultar los registros de tarjetas:");
+                    Console.WriteLine(ex.Message);
+                    Console.ResetColor();
+                }
+            }
         }
 
         static void MostrarDetalleCompleto(int cuenta)
